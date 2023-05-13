@@ -36,25 +36,21 @@
                 .attr("class", "county")
                 .attr("id", function(d) { return d.id; })
                 .attr("d", path)
-                .style("fill", "red")
+                .style("fill", "lightyellow")
                 .style("stroke", "gray")
                 .style("stroke-width", 1)
                 .style("stroke-opacity", 1);
 
-                d3.csv("test.csv")
+                d3.csv("FIRMS/2022-03-17_.csv")
                     .then(function(data) {
-                var points = data.filter(function(d) {
-                var pt = [d.longitude, d.latitude];
-                return d3.geoContains(ukrFeatures, pt);
-              });    
               svg.selectAll(".point")
-                    .data(points)
+                    .data(data)
                     .enter().append("circle")
                     .attr("class", "point")
                     .attr("r", 2)
                     .attr("cx", function(d) { return projection([d.longitude, d.latitude])[0]; })
                     .attr("cy", function(d) { return projection([d.longitude, d.latitude])[1]; })
-                    .style("fill", function(d) { return d.confidence > 50 ? "red" : "orange"; })
+                    .style("fill", function(d) { return d.confidence > 50 ? "orange" : "red"; })
                     .append("title")
                     .text(function(d) { return "Brightness: " + d.brightness + "\nConfidence: " + d.confidence + "\nDay/Night: " + d.daynight; });
             });
