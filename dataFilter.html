@@ -41,7 +41,7 @@
                 .style("stroke-width", 1)
                 .style("stroke-opacity", 1);
 
-                d3.csv("FIRMS/2022-03-12.csv")
+                d3.csv("process/2022-05-31.csv")
                     .then(function(data) {
                 var points = data.filter(function(d) {
                 var pt = [d.longitude, d.latitude];
@@ -52,7 +52,7 @@
                 var link = document.createElement("a");
                 var url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                link.setAttribute("download", "2022-03-09_.csv");
+                link.setAttribute("download", "2022-05-31_.csv");
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
@@ -63,7 +63,7 @@
                 .data(points)
                 .enter().append("circle")
                 .attr("class", "point")
-                .attr("r", 2)
+                .attr("r", function (d) { return Math.sqrt(d.frp) / 2; })
                 .attr("cx", function(d) { return projection([d.longitude, d.latitude])[0]; })
                 .attr("cy", function(d) { return projection([d.longitude, d.latitude])[1]; })
                 .style("fill", function(d) { return d.confidence > 50 ? "red" : "orange"; })
