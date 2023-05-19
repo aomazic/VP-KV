@@ -1,50 +1,74 @@
 <head>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="http://d3js.org/topojson.v3.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
-    <select id="month-select">
-        <option value="2">February</option>
-        <option value="3">March</option>
-        <option value="4">April</option>
-        <option value="5">May</option>
-        <option value="6">June</option>
-        <option value="7">July</option>
-        <option value="8">August</option>
-        <option value="9">September</option>
-        <option value="10">October</option>
-        <option value="11">November</option>
-        <option value="12">December</option>
-    </select>
-    <select id="day-select">
-        <option value="-">-</option>
-    </select>
-    <button id="play-button">Play</button>
+    <main>
+        <div class="main-content">
+            <div id="tabs">
+                <button id="region-button" >Region map</button>
+                <button id="points-button" class="active">Fire Points map</button>
+            </div>
+            <div id="map-controls">
+                <select id="month-select">
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+                <select id="day-select">
+                    <option value="-">-</option>
+                </select>
+                <button id="play-button">Play</button>
+                <div id="scaling-input">
+                    <input type="range" id="fire-scale" min="1" max="10" value="3">
+                    <label for="fire-scale">Fire point scaling:</label>
+                    <span id="fire-scale-value">3</span>
+                </div>
+            </div>
+            <div class="map-container">
+                <svg id="map-svg" width="1000" height="1000"></svg>
+            </div>
+        </div>
+    </main>
     <script>
-        var width = 1000;
-        var height = 1000;
+        const scalingInput = document.getElementById("scaling-input");
+        const regionsButton = document.getElementById("region-button");
+        const pointsButton = document.getElementById("points-button");
+        const fireScaleInput = document.getElementById("fire-scale");
+        const fireScaleValue = document.getElementById("fire-scale-value");
+        const width = 1000;
+        const height = 1000;
         var selectedMonth;
         var selectedDay;
-        var projection = d3.geoMercator()
-        var colorScale = d3.scaleLinear()
+        var FireScaling = 3;
+        var isRegionSet = false;
+        var projection = d3.geoMercator();
         var path = d3.geoPath()
             .projection(projection);
-
-        var colorScale = d3.scaleLinear()
-             .range(['lightred', 'darkred'])
-    
-        d3.csv("all.csv")
-            .then(function (data) {
-                colorScale.domain([0, d3.max(data, function(d) { return d.frp; })]);
-            });
-         
-    
-        var svg = d3.select("body").append("svg")
-            .attr("id", "map-svg")
-            .attr("width", width)
-            .attr("height", height)
+        const regionColorScale = d3.scaleLinear()
+                                .domain([0, 1200])
+                                .range(["#FFBBBB", "#8B0000"]);
+        var svg = d3.select("#map-svg")
+            .call(d3.zoom()
+                .scaleExtent([0, 10])
+                .on("zoom", onZoom))
             .append("g");
-    
+
+            function onZoom(event) {
+            svg.attr("transform", event.transform);
+        }
+         
+
         d3.select("body")
             .append("div")
             .attr("id", "name");
@@ -63,7 +87,11 @@
                     .style("fill", "lightyellow")
                     .style("stroke", "gray")
                     .style("stroke-width", 1)
-                    .style("stroke-opacity", 1);
+                    .style("stroke-opacity", 1)
+                    .on("click", function (d) {
+                        var regionName = d.target.__data__.properties.NAME_1;
+                        
+                    });
     
                 var interval;
     
@@ -80,18 +108,49 @@
                     }
                     d3.csv(csvFile)
                         .then(function (data) {
-                            svg.selectAll(".point").remove();
-    
-                            svg.selectAll(".point")
-                                .data(data)
-                                .enter().append("circle")
-                                .attr("class", "point")
-                                .attr("r", 2)
-                                .attr("cx", function (d) { return projection([d.longitude, d.latitude])[0]; })
-                                .attr("cy", function (d) { return projection([d.longitude, d.latitude])[1]; })
-                                .style("fill", function (d) { return colorScale(d.frp);})
-                                .append("title")
-                                .text(function (d) { return "Brightness: " + d.brightness + "\nConfidence: " + d.confidence + "\nDay/Night: " + d.daynight; });
+                            if(!isRegionSet)
+                            {
+                                svg.selectAll(".point").remove();
+                                const colorScale = d3.scaleLinear()
+                                    .domain([0, d3.max(data, function(d) { return d.frp; })])
+                                    .range(["#FF3333", "#8B0000"]);
+                                svg.selectAll(".point")
+                                    .data(data)
+                                    .enter().append("circle")
+                                    .attr("class", "point")
+                                    .attr("r", function (d) { return Math.sqrt(d.frp) * FireScaling / 4; })
+                                    .attr("cx", function (d) { return projection([d.longitude, d.latitude])[0]; })
+                                    .attr("cy", function (d) { return projection([d.longitude, d.latitude])[1]; })
+                                    .style("fill", function (d) { return colorScale(d.frp);})
+                                    .append("title")
+                                    .text(function (d) { return "Coordinates: " + d.longitude + ", " + d.latitude  + "\nDate: " + d.acq_date + "\nFire radiative power: " + d.frp + "MW"});
+                            }
+                            else {
+                                    var pointCounts = d3.rollups(data, v => v.length, d => {
+                                        var regionName;
+                                        ukrFeatures.features.forEach(feature => {
+                                            var geometry = feature.geometry;
+                                            var point = [d.longitude, d.latitude];
+                                            if (d3.geoContains(geometry, point)) {
+                                                regionName = feature.properties.NAME_1;
+                                            }
+                                        });
+                                        return regionName;
+                                    });
+
+                                    svg.selectAll(".county")
+                                        .style("fill", function (d) {
+                                            var regionName = d.properties.NAME_1;
+                                            var regionCount = pointCounts.find(function (pointCount) { return pointCount[0] === regionName; });
+                                            var count = regionCount ? regionCount[1] : 0;
+
+                                            d3.select(this)
+                                                .append("title")
+                                                .text( "Number of Fires detected\n" +regionName + ": " + count)
+                                            return regionCount ? regionColorScale(regionCount[1]) : "lightyellow";
+                                        });
+                                }
+
                         });
                 }
     
@@ -120,7 +179,7 @@
                 }
 
                 updateData(nextMonth, nextDay);
-            }
+                }
     
                 function updateDayOptions(month) {
                     var daySelect = document.getElementById("day-select");
@@ -171,10 +230,39 @@
                         }
                     });
     
-                var defaultMonth = "2";
-                var defaultDay = "-";
+                const defaultMonth = "2";
+                const defaultDay = "-";
                 updateDayOptions(defaultMonth);
                 updateData(defaultMonth, defaultDay);
+
+                fireScaleInput.addEventListener("input", function() {
+                FireScaling = parseInt(fireScaleInput.value);
+                fireScaleValue.textContent = FireScaling;
+                updateData(selectedMonth, selectedDay);
+                });
+
+
+                regionsButton.addEventListener("click", function () {
+                    isRegionSet = true;
+                    scalingInput.classList.add("disabled");
+                    pointsButton.classList.remove("active");
+                    regionsButton.classList.add("active");
+                    svg.selectAll(".point").remove();
+                    updateData(selectedMonth, selectedDay);
+                });
+
+                pointsButton.addEventListener("click", function () {
+                    isRegionSet = false;
+                    scalingInput.classList.remove("disabled");
+                    pointsButton.classList.add("active");
+                    regionsButton.classList.remove("active");
+                    svg.selectAll(".county")
+                        .style("fill", "lightyellow");
+                    updateData(selectedMonth, selectedDay);
+                });
+
             });
+
+     
     </script>
 </body>

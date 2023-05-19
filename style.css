@@ -1,0 +1,96 @@
+#main-content{
+    width: 100%;
+    height: auto;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+}
+
+#tabs {
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    margin-bottom: 10px;
+}
+
+#tabs button {
+    background-color: #f8f8f8;
+    border: none;
+    padding: 10px 20px;
+    margin-right: 5px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#tabs button:hover {
+    background-color: grey;
+}
+
+
+#tabs button:focus {
+    outline: none;
+}
+
+#tabs button.active {
+    background-color: #ddd;
+}
+
+#map-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+#map-controls select {
+    padding: 5px;
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+#map-controls #play-button {
+    background-color: #f8f8f8;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#map-controls #play-button:focus {
+    outline: none;
+}
+
+#map-controls label {
+    margin-left: 10px;
+    font-size: 14px;
+}
+
+#map-controls #fire-scale {
+    width: 100px;
+    margin-right: 10px;
+}
+
+#map-controls #fire-scale-value {
+    font-size: 14px;
+}
+
+.map-container
+{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+}
+
+.map-container svg
+{
+    width: 100%;
+    height: auto;
+}
+
+.disabled{
+    display: none;
+}
