@@ -9,7 +9,7 @@
         <div class="main-content">
             <div id="tabs">
                 <button id="region-button" >Region map</button>
-                <button id="points-button" class="active">Fire Points map</button>
+                <button id="points-button">Fire Points map</button>
             </div>
             <div id="map-controls">
                 <select id="month-select">
@@ -29,10 +29,11 @@
                     <option value="-">-</option>
                 </select>
                 <button id="play-button">Play</button>
+                <input type="number" id="anim-interval" placeholder="Animation Interval (s):" value="2">
                 <div id="scaling-input">
-                    <input type="range" id="fire-scale" min="1" max="10" value="3">
                     <label for="fire-scale">Fire point scaling:</label>
                     <span id="fire-scale-value">3</span>
+                    <input type="range" id="fire-scale" min="1" max="10" value="3">
                 </div>
             </div>
             <div class="map-container">
@@ -46,8 +47,11 @@
         const pointsButton = document.getElementById("points-button");
         const fireScaleInput = document.getElementById("fire-scale");
         const fireScaleValue = document.getElementById("fire-scale-value");
+        const daySelect = document.getElementById("day-select");
+        const animIntervalInput = document.getElementById("anim-interval");
         const width = 1000;
         const height = 1000;
+        var animInterval = 2000;
         var selectedMonth;
         var selectedDay;
         var FireScaling = 3;
@@ -143,6 +147,9 @@
                                             var regionName = d.properties.NAME_1;
                                             var regionCount = pointCounts.find(function (pointCount) { return pointCount[0] === regionName; });
                                             var count = regionCount ? regionCount[1] : 0;
+                                            d3.select(this)
+                                                .select("title")
+                                                .remove();
 
                                             d3.select(this)
                                                 .append("title")
@@ -167,7 +174,7 @@
                 } else {
                     var daysInMonth = new Date(2022, parseInt(selectedMonth), 0).getDate();
                     nextDay = (parseInt(selectedDay) % daysInMonth) + 1;
-                    document.getElementById("day-select").value = nextDay;
+                    daySelect.value = nextDay;
                     nextMonth = selectedMonth;
                     if (nextDay === 1) {
                         nextMonth = (parseInt(selectedMonth)) + 1;
@@ -182,7 +189,6 @@
                 }
     
                 function updateDayOptions(month) {
-                    var daySelect = document.getElementById("day-select");
                     daySelect.innerHTML = "";
                     var nullOption = document.createElement("option");
                         nullOption.value = "-";
@@ -203,11 +209,16 @@
                             dayOption.textContent = i;
                             daySelect.appendChild(dayOption);
                         }
+                        daySelect.value = selectedDay;
                 }
     
                 d3.select("#month-select")
                     .on("change", function () {
                         selectedMonth = this.value;
+                        if(selectedMonth === "2" && selectedDay < 24)
+                            {
+                                 selectedDay = "24";
+                            }
                         updateData(selectedMonth, selectedDay);
                         updateDayOptions(selectedMonth);
                     });
@@ -225,13 +236,15 @@
                             interval = null;
                             d3.select(this).text("Play");
                         } else {
-                            interval = setInterval(playAnimation, 2500);
+                            interval = setInterval(playAnimation, animInterval);
                             d3.select(this).text("Stop");
                         }
                     });
     
                 const defaultMonth = "2";
                 const defaultDay = "-";
+                regionsButton.disabled = false;
+                pointsButton.disabled = true;
                 updateDayOptions(defaultMonth);
                 updateData(defaultMonth, defaultDay);
 
@@ -244,22 +257,27 @@
 
                 regionsButton.addEventListener("click", function () {
                     isRegionSet = true;
+                    regionsButton.disabled = true;
+                    pointsButton.disabled = false;
                     scalingInput.classList.add("disabled");
-                    pointsButton.classList.remove("active");
-                    regionsButton.classList.add("active");
                     svg.selectAll(".point").remove();
                     updateData(selectedMonth, selectedDay);
                 });
 
                 pointsButton.addEventListener("click", function () {
                     isRegionSet = false;
+                    regionsButton.disabled = false;
+                    pointsButton.disabled = true;
                     scalingInput.classList.remove("disabled");
-                    pointsButton.classList.add("active");
-                    regionsButton.classList.remove("active");
                     svg.selectAll(".county")
                         .style("fill", "lightyellow");
                     updateData(selectedMonth, selectedDay);
                 });
+
+                animIntervalInput.addEventListener("input", function() {
+                animInterval = parseInt(animIntervalInput.value) * 1000;
+                });
+
 
             });
 
