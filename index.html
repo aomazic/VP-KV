@@ -2,7 +2,6 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="http://d3js.org/topojson.v3.min.js"></script>
     <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
     <main>
@@ -29,16 +28,32 @@
                     <option value="-">-</option>
                 </select>
                 <button id="play-button">Play</button>
-                <input type="number" id="anim-interval" placeholder="Animation Interval (s):" value="2">
+                <input type="number" id="anim-interval"  min="1" value="2" alt="Animation Interval (s):">
                 <div id="scaling-input">
                     <label for="fire-scale">Fire point scaling:</label>
                     <span id="fire-scale-value">3</span>
                     <input type="range" id="fire-scale" min="1" max="10" value="3">
                 </div>
+                <button id="graph-button">Graph analysis</button>
             </div>
-            <div class="map-container">
-                <svg id="map-svg" width="1000" height="1000"></svg>
-            </div>
+             <section class="visualization">
+                <div class="map-container">
+                    <svg id="map-svg" width="100%" height="800"></svg>
+                </div>
+                <div class="graphs">
+                    <div class="graph">
+                        <svg id="BarTotal-svg" width="100%" height="100%"></svg>
+                    </div>
+                    <div class="graph">
+                      <svg id="BarCurrent-svg" width="100%" height="100%"></svg>
+                     </div>
+                    <div class="graph pie-graphs">
+                        <svg id="PieTotal-svg" width="100%" height="100%"></svg> 
+                        <svg id="PieCurrent-svg" width="100%" height="100%"></svg>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
     <script>
@@ -49,13 +64,63 @@
         const fireScaleValue = document.getElementById("fire-scale-value");
         const daySelect = document.getElementById("day-select");
         const animIntervalInput = document.getElementById("anim-interval");
+        const graphButton = document.getElementById("graph-button");
+        const mapContainer = document.querySelector(".map-container");
+        const graphs = document.querySelector(".graphs");    
+        const graph = document.querySelector(".graph");    
+        var regionCounts;
         const width = 1000;
+
         const height = 1000;
+        const totals = [
+            { month: "February", total: 360 },
+            { month: "March", total: 17044 },
+            { month: "April", total: 3201 },
+            { month: "May", total: 7383 },
+            { month: "June", total: 4854 },
+            { month: "July", total: 13588 },
+            { month: "August", total: 11811 },
+            { month: "September", total: 2809 },
+            { month: "October", total: 1718 },
+            { month: "November", total: 362 },
+            { month: "December", total: 160 }
+        ];
+        const totalsRegion = [
+            
+            { region: "Cherkasy", total: 469 },
+            { region: "Chernihiv", total: 1566 },
+            { region: "Chernivtsi", total: 366 },
+            { region: "Crimea", total: 546 },
+            { region: "Dnipropetrovs'k", total: 4332 },
+            { region: "Donets'k", total: 11759 },
+            { region: "Ivano-Frankivs'k", total: 750 },
+            { region: "Kharkiv", total: 4187 },
+            { region: "Kherson", total: 5702 },
+            { region: "Khmel'nyts'kyy", total: 774 },
+            { region: "Kiev", total: 5158 },
+            { region: "Kiev City", total: 21 },
+            { region: "Kirovohrad", total: 908 },
+            { region: "Luhans'k", total: 6334 },
+            { region: "L'viv", total: 1764 },
+            { region: "Mykolayiv", total: 2705 },
+            { region: "Odessa", total: 2924 },
+            { region: "Poltava", total: 721 },
+            { region: "Rivne", total: 1168 },
+            { region: "Sevastopol", total: 2 },
+            { region: "Sumy", total: 316 },
+            { region: "Ternopil'", total: 277 },
+            { region: "Transcarpathia", total: 783 },
+            { region: "Vinnytsya", total: 743 },
+            { region: "Volyn", total: 519 },
+            { region: "Zaporizhzhya", total: 6698 },
+            { region: "Zhytomyr", total: 1946 }
+        ];
         var animInterval = 2000;
         var selectedMonth;
         var selectedDay;
         var FireScaling = 3;
         var isRegionSet = false;
+        var isGraphOpen = false;
         var projection = d3.geoMercator();
         var path = d3.geoPath()
             .projection(projection);
@@ -112,8 +177,29 @@
                     }
                     d3.csv(csvFile)
                         .then(function (data) {
+                            function countRegion(){
+                                regionCounts = d3.rollups(data, v => v.length, d => {
+                                        var regionName;
+                                        ukrFeatures.features.forEach(feature => {
+                                            var geometry = feature.geometry;
+                                            var point = [d.longitude, d.latitude];
+                                            if (d3.geoContains(geometry, point)) {
+                                                regionName = feature.properties.NAME_1;
+                                            }
+                                        });
+                                        return regionName;
+                                    });
+                                    if(isGraphOpen)
+                                    {
+                                        LoadCurrent();
+                                        LoadPieCurrent();
+                                    }
+                            }
+
                             if(!isRegionSet)
                             {
+                                if(isGraphOpen)
+                                    countRegion();
                                 svg.selectAll(".point").remove();
                                 const colorScale = d3.scaleLinear()
                                     .domain([0, d3.max(data, function(d) { return d.frp; })])
@@ -130,22 +216,11 @@
                                     .text(function (d) { return "Coordinates: " + d.longitude + ", " + d.latitude  + "\nDate: " + d.acq_date + "\nFire radiative power: " + d.frp + "MW"});
                             }
                             else {
-                                    var pointCounts = d3.rollups(data, v => v.length, d => {
-                                        var regionName;
-                                        ukrFeatures.features.forEach(feature => {
-                                            var geometry = feature.geometry;
-                                            var point = [d.longitude, d.latitude];
-                                            if (d3.geoContains(geometry, point)) {
-                                                regionName = feature.properties.NAME_1;
-                                            }
-                                        });
-                                        return regionName;
-                                    });
-
+                                    countRegion();
                                     svg.selectAll(".county")
                                         .style("fill", function (d) {
                                             var regionName = d.properties.NAME_1;
-                                            var regionCount = pointCounts.find(function (pointCount) { return pointCount[0] === regionName; });
+                                            var regionCount = regionCounts.find(function (regionCount) { return regionCount[0] === regionName; });
                                             var count = regionCount ? regionCount[1] : 0;
                                             d3.select(this)
                                                 .select("title")
@@ -278,9 +353,252 @@
                 animInterval = parseInt(animIntervalInput.value) * 1000;
                 });
 
+                graphButton.addEventListener("click", function() {
+                    if (isGraphOpen) {
+                        mapContainer.style.width = "100%";
+                        graphs.style.width = "0%";
+                        graphButton.textContent = "Graph analysis";
+                        isGraphOpen = false;
+                        graphs.style.display = "none";
 
+                    } else {
+                        mapContainer.style.width = "65%";
+                        graphs.style.width = "35%";
+                        graphButton.textContent = "Close graph analysis";
+                        isGraphOpen = true;
+                        graphs.style.display = "flex";
+                        loadGraphs();
+                    }
+                });
+
+                function loadGraphs() {
+                    LoadTotal();
+                    LoadCurrent();
+                    LoadPieTotal();
+                    }
+
+
+                    function LoadCurrent()
+                    {
+                        const graphSvg = d3.select("#BarCurrent-svg");
+                        graphSvg.selectAll("*").remove();
+
+                        const svgWidth = parseInt(graph.clientWidth);
+                        const svgHeight = parseInt(graph.clientHeight);
+                        const svg = graphSvg.attr("width", svgWidth).attr("height", svgHeight);
+
+                        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+                        const chartWidth = svgWidth - margin.left - margin.right;
+                        const chartHeight = svgHeight - margin.top - margin.bottom;
+
+                        const xScale = d3
+                            .scaleBand()
+                            .domain(regionCounts.map((d) => d[0]))
+                            .range([0, chartWidth])
+                            .padding(0.1);
+
+                        const yScale = d3
+                            .scaleLinear()
+                            .domain([0, d3.max(regionCounts, (d) => d[1])])
+                            .range([chartHeight, 0]);
+
+                        const xAxis = d3.axisBottom(xScale);
+                        const yAxis = d3.axisLeft(yScale);
+
+                        const chart = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+                        chart.append("g").attr("transform", `translate(0, ${chartHeight})`).call(xAxis);
+
+                        chart.append("g").call(yAxis);
+
+                        chart
+                            .append("text")
+                            .attr("class", "chart-title")
+                            .attr("x", chartWidth / 2)
+                            .attr("y", -margin.top / 2 + 8)
+                            .text("Fire points per region for selected day");
+
+                        const bars = chart
+                            .selectAll(".bar")
+                            .data(regionCounts)
+                            .enter()
+                            .append("rect")
+                            .attr("class", "bar")
+                            .attr("x", (d) => xScale(d[0]))
+                            .attr("y", chartHeight)
+                            .attr("width", xScale.bandwidth())
+                            .attr("height", 0)
+                            .attr("fill", "#1a1a1a");
+
+                        bars
+                            .transition()
+                            .duration(1000)
+                            .attr("y", (d) => yScale(d[1]))
+                            .attr("height", (d) => chartHeight - yScale(d[1]));
+                        }
+
+                    function LoadTotal(){
+                    const graphSvg = d3.select("#BarTotal-svg");
+                    graphSvg.selectAll("*").remove();
+
+                    const svgWidth = parseInt(graph.clientWidth);
+                    const svgHeight = parseInt(graph.clientHeight);
+                    const svg = graphSvg.attr("width", svgWidth).attr("height", svgHeight);
+
+                    const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+                    const chartWidth = svgWidth - margin.left - margin.right;
+                    const chartHeight = svgHeight - margin.top - margin.bottom;
+
+                    const xScale = d3
+                        .scaleBand()
+                        .domain(totals.map((d) => d.month))
+                        .range([0, chartWidth])
+                        .padding(0.1);
+
+                    const yScale = d3
+                        .scaleLinear()
+                        .domain([0, d3.max(totals, (d) => d.total)])
+                        .range([chartHeight, 0]);
+
+                    const xAxis = d3.axisBottom(xScale);
+                    const yAxis = d3.axisLeft(yScale);
+
+                    const chart = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+                    chart.append("g").attr("transform", `translate(0, ${chartHeight})`).call(xAxis);
+
+                    chart.append("g").call(yAxis);
+
+                    const bars = chart
+                        .selectAll(".bar")
+                        .data(totals)
+                        .enter()
+                        .append("rect")
+                        .attr("class", "bar")
+                        .attr("x", (d) => xScale(d.month))
+                        .attr("y", chartHeight)
+                        .attr("width", xScale.bandwidth())
+                        .attr("height", 0)
+                        .attr("fill", "#1a1a1a");
+
+                    bars
+                        .transition()
+                        .duration(1000) 
+                        .attr("y", (d) => yScale(d.total))
+                        .attr("height", (d) => chartHeight - yScale(d.total));
+
+                    chart
+                        .selectAll(".bar-label")
+                        .data(totals)
+                        .enter()
+                        .append("text")
+                        .attr("class", "bar-label")
+                        .attr("x", (d) => xScale(d.month) + xScale.bandwidth() / 2)
+                        .attr("y", (d) => yScale(d.total) - 5)
+                        .text((d) => d.total)
+                        .attr("text-anchor", "middle");
+
+                    chart
+                        .append("text")
+                        .attr("class", "chart-title")
+                        .attr("x", chartWidth / 2)
+                        .attr("y", -margin.top / 2)
+                        .text("Monthly Total");
+                    }
+
+                    function LoadPieTotal() {
+                        const graphSvg = d3.select("#PieTotal-svg");
+                        graphSvg.selectAll("*").remove();
+
+                        const data = totalsRegion.map((d) => d.total);
+                        const labels = totalsRegion.map((d) => d.region);
+
+                        const svgWidth = parseInt(graphSvg.style("width"));
+                        const svgHeight = parseInt(graphSvg.style("height"));
+                        const radius = Math.min(svgWidth, svgHeight) / 2;
+
+                        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+                        const pie = d3.pie().value((d) => d);
+
+                        const arc = d3.arc().innerRadius(0).outerRadius(radius);
+
+                        const graph = graphSvg
+                            .append("g")
+                            .attr("transform", `translate(${svgWidth / 2},${svgHeight / 2})`);
+
+                        const arcs = graph
+                            .selectAll(".arc")
+                            .data(pie(data))
+                            .enter()
+                            .append("g")
+                            .attr("class", "arc");
+
+                        arcs
+                            .append("path")
+                            .attr("d", arc)
+                            .attr("fill", (d, i) => color(i))
+                            .attr("stroke", "white")
+                            .attr("stroke-width", 1)
+                            .on("mouseover", handleMouseOver)
+                            .on("mouseout", handleMouseOut);
+
+                        const textLabels = arcs
+                            .append("text")
+                            .attr("dy", -svgHeight/3)
+                            .attr("text-anchor", "middle")
+                            .style("fill", "black")
+                            .style("color" ,"black")
+                            .style("font-size", "large;")
+                            .style("opacity", 0)
+                            .text((d, i) => labels[i] + ": " +  data[i])
+                            .style("pointer-events", "none");
+
+                        function handleMouseOver(d, i) {
+                            d3.select(this)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 2)
+                            .transition()
+                            .duration(200)
+                            .attr("transform", (d) => {
+                                const angle = (d.startAngle + d.endAngle) / 2;
+                                const x = Math.sin(angle) * 10;
+                                const y = -Math.cos(angle) * 10;
+                                return `translate(${x},${y})`;
+                            });
+
+                            d3.select(this.parentNode).select("text")
+                            .style("opacity", 1);
+                        }
+
+                        function handleMouseOut(d, i) {
+                            d3.select(this)
+                            .attr("stroke", "white")
+                            .attr("stroke-width", 1)
+                            .transition()
+                            .duration(200)
+                            .attr("transform", "translate(0,0)");
+
+                            d3.select(this.parentNode).select("text")
+                            d3.select(this.parentNode).select("text").style("opacity", 0);
+                        }
+
+                        arcs
+                            .selectAll("path")
+                            .transition()
+                            .duration(1000)
+                            .attrTween("d", function (d) {
+                            const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                            return function (t) {
+                                return arc(interpolate(t));
+                            };
+                            });
+                        }
+
+                function loadPieCurrent() {
+                }
             });
 
-     
+          
     </script>
 </body>
