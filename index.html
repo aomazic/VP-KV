@@ -192,14 +192,16 @@
                                     if(isGraphOpen)
                                     {
                                         LoadCurrent();
-                                        LoadPieCurrent();
+                                        loadPieCurrent();
                                     }
                             }
 
                             if(!isRegionSet)
                             {
                                 if(isGraphOpen)
+                                {
                                     countRegion();
+                                }
                                 svg.selectAll(".point").remove();
                                 const colorScale = d3.scaleLinear()
                                     .domain([0, d3.max(data, function(d) { return d.frp; })])
@@ -367,6 +369,7 @@
                         graphButton.textContent = "Close graph analysis";
                         isGraphOpen = true;
                         graphs.style.display = "flex";
+                        updateData(selectedMonth, selectedDay);
                         loadGraphs();
                     }
                 });
@@ -375,6 +378,7 @@
                     LoadTotal();
                     LoadCurrent();
                     LoadPieTotal();
+                    loadPieCurrent();
                     }
 
 
@@ -517,7 +521,9 @@
                         const svgHeight = parseInt(graphSvg.style("height"));
                         const radius = Math.min(svgWidth, svgHeight) / 2;
 
-                        const color = d3.scaleOrdinal(d3.schemeCategory10);
+                        const color = d3.scaleSequential()
+                            .interpolator(d3.interpolateYlOrRd)
+                            .domain([0, d3.max(data)]);
 
                         const pie = d3.pie().value((d) => d);
 
@@ -537,7 +543,7 @@
                         arcs
                             .append("path")
                             .attr("d", arc)
-                            .attr("fill", (d, i) => color(i))
+                            .attr("fill", (d, i) => color(d.data))
                             .attr("stroke", "white")
                             .attr("stroke-width", 1)
                             .on("mouseover", handleMouseOver)
@@ -553,6 +559,14 @@
                             .style("opacity", 0)
                             .text((d, i) => labels[i] + ": " +  data[i])
                             .style("pointer-events", "none");
+
+                            graphSvg.append("text")
+                            .attr("x", svgWidth / 2)
+                            .attr("y", 30)
+                            .attr("text-anchor", "middle")
+                            .style("font-size", "20px")
+                            .text("Total Fire point share by region");
+
 
                         function handleMouseOver(d, i) {
                             d3.select(this)
@@ -579,7 +593,6 @@
                             .duration(200)
                             .attr("transform", "translate(0,0)");
 
-                            d3.select(this.parentNode).select("text")
                             d3.select(this.parentNode).select("text").style("opacity", 0);
                         }
 
@@ -595,7 +608,103 @@
                             });
                         }
 
-                function loadPieCurrent() {
+                    function loadPieCurrent() {
+                        const graphSvg = d3.select("#PieCurrent-svg");
+                        graphSvg.selectAll("*").remove();
+
+                        const data = regionCounts.map((d) => d[1]);
+                        const labels = regionCounts.map((d) => d[0]);
+
+                        const svgWidth = parseInt(graphSvg.style("width"));
+                        const svgHeight = parseInt(graphSvg.style("height"));
+                        const radius = Math.min(svgWidth, svgHeight) / 2;
+
+                        const color = d3.scaleSequential()
+                            .interpolator(d3.interpolateYlOrRd)
+                            .domain([0, d3.max(data)]);
+
+                        const pie = d3.pie().value((d) => d);
+
+                        const arc = d3.arc().innerRadius(0).outerRadius(radius);
+
+                        const graph = graphSvg
+                            .append("g")
+                            .attr("transform", `translate(${svgWidth / 2},${svgHeight / 2})`);
+
+                        const arcs = graph
+                            .selectAll(".arc")
+                            .data(pie(data))
+                            .enter()
+                            .append("g")
+                            .attr("class", "arc");
+
+                        arcs
+                            .append("path")
+                            .attr("d", arc)
+                            .attr("fill", (d, i) => color(d.data))
+                            .attr("stroke", "white")
+                            .attr("stroke-width", 1)
+                            .on("mouseover", handleMouseOver)
+                            .on("mouseout", handleMouseOut);
+
+                        const textLabels = arcs
+                            .append("text")
+                            .attr("dy", -svgHeight/3)
+                            .attr("text-anchor", "middle")
+                            .style("fill", "black")
+                            .style("color" ,"black")
+                            .style("font-size", "large;")
+                            .style("opacity", 0)
+                            .text((d, i) => labels[i] + ": " +  data[i])
+                            .style("pointer-events", "none");
+
+                            graphSvg.append("text")
+                            .attr("x", svgWidth / 2)
+                            .attr("y", 30)
+                            .attr("text-anchor", "middle")
+                            .style("font-size", "20px")
+                            .text("Selected day fire point share by region");
+
+
+                        function handleMouseOver(d, i) {
+                            d3.select(this)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 2)
+                            .transition()
+                            .duration(200)
+                            .attr("transform", (d) => {
+                                const angle = (d.startAngle + d.endAngle) / 2;
+                                const x = Math.sin(angle) * 10;
+                                const y = -Math.cos(angle) * 10;
+                                return `translate(${x},${y})`;
+                            });
+
+                            d3.select(this.parentNode).select("text")
+                            .style("opacity", 1);
+                        }
+
+                        function handleMouseOut(d, i) {
+                            d3.select(this)
+                            .attr("stroke", "white")
+                            .attr("stroke-width", 1)
+                            .transition()
+                            .duration(200)
+                            .attr("transform", "translate(0,0)");
+
+                            d3.select(this.parentNode).select("text").style("opacity", 0);
+                        }
+
+                        arcs
+                            .selectAll("path")
+                            .transition()
+                            .duration(1000)
+                            .attrTween("d", function (d) {
+                            const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                            return function (t) {
+                                return arc(interpolate(t));
+                            };
+                            });
+
                 }
             });
 
