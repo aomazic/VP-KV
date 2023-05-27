@@ -206,7 +206,7 @@
                                     .data(data)
                                     .enter().append("circle")
                                     .attr("class", "point")
-                                    .attr("r", function (d) { return Math.sqrt(d.frp) * FireScaling / 4; })
+                                    .attr("r", function (d) { return Math.sqrt(d.frp) * FireScaling / 5; })
                                     .attr("cx", function (d) { return projection([d.longitude, d.latitude])[0]; })
                                     .attr("cy", function (d) { return projection([d.longitude, d.latitude])[1]; })
                                     .style("fill", function (d) { return colorScale(d.frp);})
@@ -324,7 +324,8 @@
                 fireScaleInput.addEventListener("input", function() {
                 FireScaling = parseInt(fireScaleInput.value);
                 fireScaleValue.textContent = FireScaling;
-                updateData(selectedMonth, selectedDay);
+                svg.selectAll(".point")
+                .attr("r", function (d) { return Math.sqrt(d.frp) * FireScaling / 5; });
                 });
 
 
@@ -365,7 +366,8 @@
                         graphButton.textContent = "Close graph analysis";
                         isGraphOpen = true;
                         graphs.style.display = "flex";
-                        updateData(selectedMonth, selectedDay);
+                        if(!isRegionSet)
+                            updateData(selectedMonth, selectedDay);
                         loadGraphs();
                     }
                 });
