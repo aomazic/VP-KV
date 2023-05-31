@@ -380,64 +380,81 @@
                     }
 
 
-                    function LoadCurrent()
-                    {
-                        const graphSvg = d3.select("#BarCurrent-svg");
-                        graphSvg.selectAll("*").remove();
+                    function LoadCurrent() {
+  const graphSvg = d3.select("#BarCurrent-svg");
+  graphSvg.selectAll("*").remove();
 
-                        const svgWidth = parseInt(graph.clientWidth);
-                        const svgHeight = parseInt(graph.clientHeight);
-                        const svg = graphSvg.attr("width", svgWidth).attr("height", svgHeight);
+  const svgWidth = parseInt(graph.clientWidth);
+  const svgHeight = parseInt(graph.clientHeight);
+  const svg = graphSvg.attr("width", svgWidth).attr("height", svgHeight);
 
-                        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
-                        const chartWidth = svgWidth - margin.left - margin.right;
-                        const chartHeight = svgHeight - margin.top - margin.bottom;
+  const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+  const chartWidth = svgWidth - margin.left - margin.right;
+  const chartHeight = svgHeight - margin.top - margin.bottom;
 
-                        const xScale = d3
-                            .scaleBand()
-                            .domain(regionCounts.map((d) => d[0]))
-                            .range([0, chartWidth])
-                            .padding(0.1);
+  const xScale = d3
+    .scaleBand()
+    .domain(regionCounts.map((d) => d[0]))
+    .range([0, chartWidth])
+    .padding(0.1);
 
-                        const yScale = d3
-                            .scaleLinear()
-                            .domain([0, d3.max(regionCounts, (d) => d[1])])
-                            .range([chartHeight, 0]);
+  const yScale = d3
+    .scaleLinear()
+    .domain([0, d3.max(regionCounts, (d) => d[1])])
+    .range([chartHeight, 0]);
 
-                        const xAxis = d3.axisBottom(xScale);
-                        const yAxis = d3.axisLeft(yScale);
+  const yAxis = d3.axisLeft(yScale);
+  const xAxis = d3.axisBottom(xScale);
 
-                        const chart = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+  const chart = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+  chart.append("g").attr("transform", `translate(0, ${chartHeight})`).call(xAxis);
 
-                        chart.append("g").attr("transform", `translate(0, ${chartHeight})`).call(xAxis);
+  chart.append("g").call(yAxis);
 
-                        chart.append("g").call(yAxis);
+  chart
+    .append("text")
+    .attr("class", "chart-title")
+    .attr("x", chartWidth / 2)
+    .attr("y", -margin.top / 2 + 8)
+    .text("Fire points per region for selected day");
 
-                        chart
-                            .append("text")
-                            .attr("class", "chart-title")
-                            .attr("x", chartWidth / 2)
-                            .attr("y", -margin.top / 2 + 8)
-                            .text("Fire points per region for selected day");
+  const bars = chart
+    .selectAll(".bar")
+    .data(regionCounts)
+    .enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("x", (d) => xScale(d[0]))
+    .attr("y", chartHeight)
+    .attr("width", xScale.bandwidth())
+    .attr("height", 0)
+    .attr("fill", "#1a1a1a")
+    .on("mouseover", function (d) {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr("y", (d) => yScale(d[1]) - 5) 
 
-                        const bars = chart
-                            .selectAll(".bar")
-                            .data(regionCounts)
-                            .enter()
-                            .append("rect")
-                            .attr("class", "bar")
-                            .attr("x", (d) => xScale(d[0]))
-                            .attr("y", chartHeight)
-                            .attr("width", xScale.bandwidth())
-                            .attr("height", 0)
-                            .attr("fill", "#1a1a1a");
+      d3.select(this)
+        .append("title")
+        .text((d) => d[0]);
+    })
+    .on("mouseout", function (d) {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr("y", (d) => yScale(d[1]));
 
-                        bars
-                            .transition()
-                            .duration(1000)
-                            .attr("y", (d) => yScale(d[1]))
-                            .attr("height", (d) => chartHeight - yScale(d[1]));
-                        }
+      d3.select(this).select("title").remove();
+    });
+
+  bars
+    .transition()
+    .duration(1000)
+    .attr("y", (d) => yScale(d[1]))
+    .attr("height", (d) => chartHeight - yScale(d[1]));
+}
+
 
                     function LoadTotal(){
                     const graphSvg = d3.select("#BarTotal-svg");
