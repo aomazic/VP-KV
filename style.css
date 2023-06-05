@@ -9,6 +9,10 @@ body{
    height: 100%;
 }
 
+#title{
+    margin-right: 5em;
+}
+
 .map-container{
     background-color: #f8f8f8;
 }
